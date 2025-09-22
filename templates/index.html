@@ -12,7 +12,7 @@
       const res = await fetch("/api/offers");
       const data = await res.json();
 
-      // Parse prices -> convert "0,88 €" to float
+      // Parse prices
       const parsed = data.map(d => ({
         discounter: d.discounter,
         date: d.date,
@@ -26,27 +26,51 @@
         groups[d.discounter].push(d);
       });
 
-      // Sort by date inside each group
-      Object.values(groups).forEach(arr => arr.sort((a,b) => a.date.localeCompare(b.date)));
+      // Extract unique dates (sorted)
+      const labels = [...new Set(parsed.map(d => d.date))].sort();
 
-      // Extract unique dates
-      const labels = [...new Set(parsed.map(d => d.date))];
-
-      // Chart datasets
+      // Colors
       const colors = ["#22c55e", "#ef4444", "#3b82f6", "#f59e0b", "#8b5cf6"];
       let i = 0;
+
+      // Build datasets
       const datasets = Object.entries(groups).map(([disc, arr]) => {
         const map = {};
         arr.forEach(a => map[a.date] = a.price);
+
+        // Tiny offset for visibility
+        const offset = (Math.random() - 0.5) * 0.02;
+
         return {
           label: disc,
-          data: labels.map(l => map[l] || null),
+          data: labels.map(l => (map[l] !== undefined ? map[l] : 1.49) + offset),
           borderColor: colors[i++ % colors.length],
           backgroundColor: "transparent",
           tension: 0.3,
           borderWidth: 2,
+          pointRadius: 0, // hide dots
         };
       });
+
+      // Plugin to draw labels on right
+      const labelPlugin = {
+        id: "endLabels",
+        afterDatasetsDraw(chart) {
+          const { ctx, chartArea: { top, bottom } } = chart;
+          ctx.save();
+          chart.data.datasets.forEach((ds, idx) => {
+            const meta = chart.getDatasetMeta(idx);
+            const lastPoint = meta.data[meta.data.length - 1];
+            if (!lastPoint) return;
+            ctx.fillStyle = ds.borderColor;
+            ctx.font = "bold 12px sans-serif";
+            ctx.textAlign = "left";
+            ctx.textBaseline = "middle";
+            ctx.fillText(ds.label, lastPoint.x + 6, lastPoint.y);
+          });
+          ctx.restore();
+        }
+      };
 
       // Chart.js
       const ctx = document.getElementById("priceChart").getContext("2d");
@@ -57,14 +81,24 @@
           responsive: true,
           plugins: { legend: { display: false } },
           scales: {
-            y: { beginAtZero: false, ticks: { callback: v => v + " €" } }
+            y: {
+              beginAtZero: false,
+              ticks: { callback: v => v.toFixed(2) + " €" }
+            }
           }
-        }
+        },
+        plugins: [labelPlugin]
       });
 
-      // Table
+      // Build today's table
       const latestDate = labels[labels.length - 1];
-      const todays = parsed.filter(p => p.date === latestDate);
+      const todays = Object.keys(groups).map(disc => {
+        const entry = groups[disc].find(p => p.date === latestDate);
+        return {
+          discounter: disc,
+          price: entry ? entry.price : 1.49
+        };
+      });
       const avg = todays.reduce((sum,p) => sum+p.price,0) / todays.length;
 
       let html = `
