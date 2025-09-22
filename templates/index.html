@@ -1,8 +1,16 @@
 {{ define "content" }}
   <h1 class="text-2xl font-bold mb-4">Monster Energy Trends</h1>
 
+  <!-- Header row: Dark mode toggle + Best Price -->
+  <div class="flex justify-between items-center mb-4">
+    <button id="darkModeToggle" class="px-3 py-1 rounded bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+      🌙
+    </button>
+    <div id="bestPrice" class="text-4xl font-extrabold text-right">– €</div>
+  </div>
+
   <!-- Timeframe Selector -->
-  <div class="flex space-x-4 mb-4">
+  <div class="flex justify-center space-x-6 mb-4">
     <button onclick="setTimeframe('week')" class="timeframe-btn text-gray-500">W</button>
     <button onclick="setTimeframe('month')" class="timeframe-btn text-gray-500">M</button>
     <button onclick="setTimeframe('year')" class="timeframe-btn text-gray-500">Y</button>
@@ -10,7 +18,7 @@
   </div>
 
   <!-- Chart -->
-  <canvas id="priceChart" class="w-full h-64"></canvas>
+  <canvas id="priceChart" class="w-full h-72"></canvas>
 
   <!-- Table -->
   <div id="priceTable" class="mt-6"></div>
@@ -19,27 +27,38 @@
     let chart; 
     let currentTimeframe = "all";
 
+    // Light/Dark mode toggle
+    document.addEventListener("DOMContentLoaded", () => {
+      const toggleBtn = document.getElementById("darkModeToggle");
+      toggleBtn.addEventListener("click", () => {
+        document.documentElement.classList.toggle("dark");
+        if (document.documentElement.classList.contains("dark")) {
+          toggleBtn.textContent = "☀️";
+        } else {
+          toggleBtn.textContent = "🌙";
+        }
+      });
+    });
+
     function setTimeframe(tf) {
       currentTimeframe = tf;
       document.querySelectorAll(".timeframe-btn").forEach(btn => {
-        btn.classList.remove("text-black", "font-bold", "border-b-2", "border-black");
+        btn.classList.remove("text-black", "font-bold", "border-b-2", "border-black", "dark:text-white", "dark:border-white");
         btn.classList.add("text-gray-500");
       });
-      event.target.classList.add("text-black", "font-bold", "border-b-2", "border-black");
+      event.target.classList.add("text-black", "font-bold", "border-b-2", "border-black", "dark:text-white", "dark:border-white");
       event.target.classList.remove("text-gray-500");
       loadData();
     }
 
     async function loadData() {
-      // Map timeframe -> endpoint
       const endpointMap = {
         week: "/api/offers",
         month: "/api/offers",
         year: "/api/offers",
         all: "/api/offers"
       };
-
-      const url = endpointMap[currentTimeframe] || "/api/offers/all";
+      const url = endpointMap[currentTimeframe] || "/api/offers";
       const res = await fetch(url);
       const data = await res.json();
 
@@ -68,9 +87,7 @@
       const datasets = Object.entries(groups).map(([disc, arr]) => {
         const map = {};
         arr.forEach(a => map[a.date] = a.price);
-
-        // Tiny offset for visibility
-        const offset = (Math.random() - 0.5) * 0.02;
+        const offset = (Math.random() - 0.5) * 0.02; // small jitter
 
         return {
           label: disc,
@@ -79,11 +96,11 @@
           backgroundColor: "transparent",
           tension: 0.3,
           borderWidth: 2,
-          pointRadius: 0, // hide dots
+          pointRadius: 0,
         };
       });
 
-      // Plugin to draw labels on right
+      // Plugin: right-side labels
       const labelPlugin = {
         id: "endLabels",
         afterDatasetsDraw(chart) {
@@ -103,7 +120,25 @@
         }
       };
 
-      // Destroy old chart if exists
+      // Plugin: dotted line at 1 €
+      const refLinePlugin = {
+        id: "refLine",
+        afterDraw(chart) {
+          const y = chart.scales.y.getPixelForValue(1);
+          const { ctx, chartArea: { left, right } } = chart;
+          ctx.save();
+          ctx.beginPath();
+          ctx.setLineDash([5, 5]);
+          ctx.moveTo(left, y);
+          ctx.lineTo(right, y);
+          ctx.strokeStyle = "#9ca3af"; // gray-400
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.restore();
+        }
+      };
+
+      // Destroy old chart
       if (chart) chart.destroy();
 
       // Chart.js
@@ -115,16 +150,14 @@
           responsive: true,
           plugins: { legend: { display: false } },
           scales: {
-            y: {
-              beginAtZero: false,
-              ticks: { callback: v => v.toFixed(2) + " €" }
-            }
+            x: { display: false, grid: { display: false, drawBorder: false } },
+            y: { display: false, grid: { display: false, drawBorder: false } }
           }
         },
-        plugins: [labelPlugin]
+        plugins: [labelPlugin, refLinePlugin]
       });
 
-      // Build today's table
+      // Table + Best Price
       const latestDate = labels[labels.length - 1];
       const todays = Object.keys(groups).map(disc => {
         const entry = groups[disc].find(p => p.date === latestDate);
@@ -134,6 +167,8 @@
         };
       });
       const avg = todays.reduce((sum,p) => sum+p.price,0) / todays.length;
+      const best = Math.min(...todays.map(p => p.price));
+      document.getElementById("bestPrice").innerText = best.toFixed(2) + " €";
 
       let html = `
         <table class="w-full text-sm">
@@ -158,9 +193,8 @@
       document.getElementById("priceTable").innerHTML = html;
     }
 
-    // Initial load
     loadData();
-    // Default selection highlight
+    // Default active button
     document.querySelectorAll(".timeframe-btn")[3].classList.add("text-black", "font-bold", "border-b-2", "border-black");
     document.querySelectorAll(".timeframe-btn")[3].classList.remove("text-gray-500");
   </script>
