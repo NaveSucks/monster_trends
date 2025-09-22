@@ -8,6 +8,7 @@ import (
 func main() {
 	// Routes
 	http.HandleFunc("/", indexHandler)
+	http.HandleFunc("/api/offers", offersHandler)
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
 	log.Println("Monster Trends running on http://localhost:3000")
