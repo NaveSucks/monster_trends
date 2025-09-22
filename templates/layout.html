@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ .Title }}</title>
+  <link href="/static/tailwind.css" rel="stylesheet">
+</head>
+<body class="bg-white text-gray-900">
+  <div class="max-w-md mx-auto p-4">
+    {{ block "content" . }}{{ end }}
+  </div>
+</body>
+</html>
