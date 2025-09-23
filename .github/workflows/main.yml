@@ -54,4 +54,4 @@ jobs:
             sudo docker rm monster-trends || true
             sudo docker rmi monster-trends-image || true
             sudo docker build -t monster-trends-image .
-            sudo docker run -d --name monster-trends -p 8080:8080 monster-trends-image
+            sudo docker run -d --name monster-trends -p 3000:3000 monster-trends-image
