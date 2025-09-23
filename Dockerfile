@@ -5,7 +5,7 @@ FROM alpine:latest
 WORKDIR /app
 
 # Copy the built binary
-COPY webapp-monster .
+COPY monster-trends .
 
 # Expose the port your Go app listens on
 EXPOSE 3000
