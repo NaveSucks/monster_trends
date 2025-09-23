@@ -50,8 +50,8 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /home/deploy/monster-trends
-            sudo docker stop monster-trends || true
-            sudo docker rm monster-trends || true
-            sudo docker rmi monster-trends-image || true
-            sudo docker build -t monster-trends-image .
-            sudo docker run -d --name monster-trends -p 3000:3000 monster-trends-image
+            docker stop monster-trends || true
+            docker rm monster-trends || true
+            docker rmi monster-trends-image || true
+            docker build -t monster-trends-image .
+            docker run -d --name monster-trends -p 3000:3000 monster-trends-image
