@@ -20,7 +20,7 @@ jobs:
       - name: Build Go binary
         run: |
           go mod tidy
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o monster-trends ./cmd/monster-trends
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o monster-trends .
 
       - name: Docker Login to VPS
         uses: appleboy/ssh-action@v0.1.7
