@@ -53,12 +53,12 @@
 
     async function loadData() {
       const endpointMap = {
-        week: "/api/offers",
-        month: "/api/offers",
-        year: "/api/offers",
-        all: "/api/offers"
+        week: "api/offers",
+        month: "api/offers",
+        year: "api/offers",
+        all: "api/offers"
       };
-      const url = endpointMap[currentTimeframe] || "/api/offers";
+      const url = endpointMap[currentTimeframe] || "api/offers";
       const res = await fetch(url);
       const data = await res.json();
 
