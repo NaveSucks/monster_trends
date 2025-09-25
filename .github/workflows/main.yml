@@ -1,4 +1,4 @@
-name: CI/CD Pipeline Monster Trends
+name: CI/CD Pipeline Monster Trends - DockerHub
 
 on:
   push:
@@ -17,41 +17,64 @@ jobs:
         with:
           go-version: '1.21'
 
+      # 1. BUILD THE BINARY
       - name: Build Go binary
         run: |
           go mod tidy
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o monster-trends .
 
-      - name: Docker Login to VPS
-        uses: appleboy/ssh-action@v0.1.7
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: deploy
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            echo "Building and deploying monster trends application..."
-            mkdir -p /home/deploy/monster-trends
-            cd /home/deploy/monster-trends
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Copy files via SCP
+      # 2. LOG IN TO DOCKER HUB (NEW STEP)
+      - name: Docker Login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }} # Your Docker ID
+          password: ${{ secrets.DOCKER_PASSWORD }} # Your Docker PAT
+
+      # Define image tag based on your Docker ID
+      - name: Set image tag
+        id: meta
+        run: echo "IMAGE_TAG=${{ secrets.DOCKER_USERNAME }}/monster-trends:latest" >> $GITHUB_OUTPUT
+
+      # 3. BUILD AND PUSH TO DOCKER HUB
+      - name: Build and Push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.IMAGE_TAG }}
+          
+      # 4. Copy the docker-compose.yml file
+      - name: Copy docker-compose.yml to VPS
         uses: appleboy/scp-action@v0.1.4
         with:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "./monster-trends,Dockerfile,static,templates"
-          target: "/home/deploy/monster-trends"
-
-      - name: Deploy to VPS
+          source: "./docker-compose.yml" # Assumes the file is in the repo root
+          target: "/home/deploy/" # Target directory where you will run compose
+      # 5. DEPLOY TO VPS (Pull from Docker Hub and Run Compose)
+      - name: Deploy with Docker Compose
         uses: appleboy/ssh-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/deploy/monster-trends
-            docker stop monster-trends || true
-            docker rm monster-trends || true
-            docker rmi monster-trends-image || true
-            docker build -t monster-trends-image .
-            docker run -d --name monster-trends -p 3000:3000 monster-trends-image
+            # 1. Ensure the shared network exists (run this once only, but harmless if repeated)
+            docker network create monster-network || true
+
+            # 2. Change directory to where the docker-compose.yml file was copied
+            cd /home/deploy/
+            
+            # 3. Pull the latest images for all services defined in the compose file
+            # This pulls the latest monster-trends image you just pushed, and 
+            # the latest monster-scrape image.
+            docker compose pull
+            
+            # 4. Stop, remove, and recreate the containers in detached mode
+            # -d: detached mode (run in background)
+            docker compose up -d --force-recreate

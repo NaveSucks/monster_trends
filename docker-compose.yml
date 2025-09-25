@@ -1,0 +1,26 @@
+version: '3.8'
+networks:
+  monster-network:
+    external: true # Use the network created manually on the VPS
+services:
+  monster-scrape:
+    image: navesucks/monster-scrape:latest # REPLACE with your actual image
+    container_name: monster-scrape
+    restart: always
+    networks:
+      - monster-network
+    # Note: No ports needed here if only monster-trends connects to it
+
+  monster-trends:
+    image: navesucks/monster-trends:latest # REPLACE with your actual image
+    container_name: monster-trends
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      # FIX: Use the service name defined above, not 'localhost'
+      API_URL: http://monster-scrape:8080/offers 
+    networks:
+      - monster-network
+    depends_on:
+      - monster-scrape
