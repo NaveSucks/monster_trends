@@ -26,7 +26,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 2. LOG IN TO DOCKER HUB (NEW STEP)
+      # 2. LOG IN TO DOCKER HUB
       - name: Docker Login
         uses: docker/login-action@v3
         with:
@@ -46,7 +46,7 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.IMAGE_TAG }}
-          
+
       # 4. Copy the docker-compose.yml file
       - name: Copy docker-compose.yml to VPS
         uses: appleboy/scp-action@v0.1.4
@@ -56,6 +56,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "./docker-compose.yml" # Assumes the file is in the repo root
           target: "/home/deploy/" # Target directory where you will run compose
+
       # 5. DEPLOY TO VPS (Pull from Docker Hub and Run Compose)
       - name: Deploy with Docker Compose
         uses: appleboy/ssh-action@v0.1.7
@@ -67,14 +68,17 @@ jobs:
             # 1. Ensure the shared network exists (run this once only, but harmless if repeated)
             docker network create monster-network || true
 
-            # 2. Change directory to where the docker-compose.yml file was copied
+            # 2. Log in to Docker Hub on the VPS
+            docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+
+            # 3. Change directory to where the docker-compose.yml file was copied
             cd /home/deploy/
-            
-            # 3. Pull the latest images for all services defined in the compose file
-            # This pulls the latest monster-trends image you just pushed, and 
+
+            # 4. Pull the latest images for all services defined in the compose file
+            # This pulls the latest monster-trends image you just pushed, and
             # the latest monster-scrape image.
             docker compose pull
-            
-            # 4. Stop, remove, and recreate the containers in detached mode
+
+            # 5. Stop, remove, and recreate the containers in detached mode
             # -d: detached mode (run in background)
             docker compose up -d --force-recreate
