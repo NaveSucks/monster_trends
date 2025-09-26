@@ -75,7 +75,10 @@ jobs:
             cd /home/deploy/
 
             # 4. Stop and remove existing containers (if they exist)
-            docker compose down || true
+            docker stop monster-scrape || true
+            docker rm monster-scrape || true
+            docker stop monster-trends || true
+            docker rm monster-trends || true
 
             # 5. Pull the latest images for all services defined in the compose file
             # This pulls the latest monster-trends image you just pushed, and
