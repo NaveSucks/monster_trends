@@ -74,11 +74,14 @@ jobs:
             # 3. Change directory to where the docker-compose.yml file was copied
             cd /home/deploy/
 
-            # 4. Pull the latest images for all services defined in the compose file
+            # 4. Stop and remove existing containers (if they exist)
+            docker compose down || true
+
+            # 5. Pull the latest images for all services defined in the compose file
             # This pulls the latest monster-trends image you just pushed, and
             # the latest monster-scrape image.
             docker compose pull
 
-            # 5. Stop, remove, and recreate the containers in detached mode
+            # 6. Stop, remove, and recreate the containers in detached mode
             # -d: detached mode (run in background)
             docker compose up -d --force-recreate
