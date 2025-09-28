@@ -57,7 +57,13 @@ jobs:
           source: "./docker-compose.yml" # Assumes the file is in the repo root
           target: "/home/deploy/" # Target directory where you will run compose
 
-      # 5. DEPLOY TO VPS (Pull from Docker Hub and Run Compose)
+      # 5. Ensure the required Docker network exists on the VPS
+      - name: Create required Docker network
+        run: |
+          # Use '|| true' to prevent the step from failing if the network already exists
+          docker network create monster-network || true 
+
+      # 6. DEPLOY TO VPS (Pull from Docker Hub and Run Compose)
       - name: Deploy with Docker Compose
         uses: appleboy/ssh-action@v0.1.7
         with:
